@@ -51,6 +51,18 @@ void collect_valid_blocks(void) {
     }
 }
 
+int write_upgrade_image(const char *filename) {
+    char output_name[256];
+    strcpy(output_name, filename);
+    strcpy( strchr(output_name, '.'), "-upgrade.bin" );
+
+    FILE *fp=fopen(output_name, "w");
+    fwrite(whole_file, 1, rootfs_data_addr+valid_blks_offset+4, fp);
+    fclose(fp);
+
+    return 0;
+}
+
 int kernel_front_case(void) {
     collect_valid_blocks();
 
@@ -58,9 +70,7 @@ int kernel_front_case(void) {
     printf("deadcode addr = %#x\n", rootfs_data_addr+valid_blks_offset);
     memcpy(whole_file+rootfs_data_addr+valid_blks_offset, dead_code, 4);
 
-    FILE *fp=fopen("out.bin", "w");
-    fwrite(whole_file, 1, rootfs_data_addr+valid_blks_offset+4, fp);
-    fclose(fp);
+    write_upgrade_image(filename);
 
     return 0;
 }
@@ -74,9 +84,7 @@ int kernel_back_case(void) {
     memcpy(whole_file+rootfs_data_addr+valid_blks_offset, dead_code, 4);
     memset(whole_file+rootfs_data_addr+valid_blks_offset+4, 0xff, 
            rootfs_size-(rootfs_data_addr+valid_blks_offset+4));
-    FILE *fp = fopen("out.bin", "w");
-    fwrite(whole_file, 1, file_size, fp);
-    fclose(fp);
+    write_upgrade_image(filename);
 
     return 0;
 }
