@@ -1,4 +1,4 @@
-TARGET=a.out
+TARGET=bin-area/a.out
 ${TARGET}: main.cpp
 	g++ $< -o $@
 
