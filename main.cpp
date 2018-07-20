@@ -108,7 +108,7 @@ int main(int argc, const char **argv) {
     }
 
     if( !kernel_front ) {
-        cout << "boundary of kernel and rootfs(hex format): ";
+        cout << "boundary of kernel and rootfs(in fact, end of rootfs_data, hex format): ";
         scanf("%x", &boundary_of_kernel_rootfs);
     }
 
