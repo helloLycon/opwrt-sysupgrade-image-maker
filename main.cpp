@@ -91,30 +91,55 @@ int kernel_back_case(void) {
 
 
 int main(int argc, const char **argv) {
-    if(argc != 2) {
-        printf("usage: %s <firmware>\n", argv[0]);
+    if(argc < 2) {
+        printf("usage: %s <firmware> [cfg]\n", argv[0]);
         return 0;
     }
     
     char line[1024];
     filename = argv[1];
 
-    cout << "kernel front of rootfs ? (y/n):" ;
-    fgets(line, sizeof line, stdin);
-    if( 'y' == *line) {
-        kernel_front = true;
+    /**
+     * read: boundary + rootfs_data_addr 
+     */
+    if( argc < 3 ) {
+        cout << "kernel front of rootfs ? (y/n):" ;
+        fgets(line, sizeof line, stdin);
+        if( 'y' == *line) {
+            kernel_front = true;
+        } else {
+            kernel_front = false;
+        }
+        if( !kernel_front ) {
+            cout << "boundary of kernel and rootfs(in fact, end of rootfs_data, hex format): ";
+            scanf("%x", &boundary_of_kernel_rootfs);
+        }
+
+        cout << "address of rootfs_data(hex format): ";
+        scanf("%x", &rootfs_data_addr);
     } else {
-        kernel_front = false;
+        char cfg_line[64];
+        FILE *cfg_fp = fopen(argv[2], "r");
+        if( NULL == cfg_fp ) {
+            perror("open cfg-file");
+            return EXIT_FAILURE;
+        }
+        fgets(cfg_line, sizeof cfg_line, cfg_fp);
+        kernel_front = ( 'y' == *cfg_line );
+        fgets(cfg_line, sizeof cfg_line, cfg_fp);
+        sscanf(cfg_line, "%x", &boundary_of_kernel_rootfs);
+        fgets(cfg_line, sizeof cfg_line, cfg_fp);
+        sscanf(cfg_line, "%x", &rootfs_data_addr);
+
+        fclose(cfg_fp);
     }
 
-    if( !kernel_front ) {
-        cout << "boundary of kernel and rootfs(in fact, end of rootfs_data, hex format): ";
-        scanf("%x", &boundary_of_kernel_rootfs);
-    }
+    printf("--------------------------------------\n");
+    printf("kernel front of rootfs: %s\n", kernel_front ? "yes" : "no");
+    printf("boundary_of_kernel_rootfs = %#x\n", boundary_of_kernel_rootfs);
+    printf("rootfs_data_addr = %#x\n", rootfs_data_addr);
 
-    cout << "address of rootfs_data(hex format): ";
-    scanf("%x", &rootfs_data_addr);
-    
+    /* begin handling */
     FILE *fp = fopen(filename, "r");
     if( NULL == fp ) {
         perror("open firmware");
