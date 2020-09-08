@@ -18,7 +18,7 @@ const char *filename;
 unsigned int rootfs_size;
 unsigned int file_size;
 unsigned int boundary_of_kernel_rootfs;
-unsigned int rootfs_data_addr;
+unsigned int rootfs_data_addr, rootfs_data_addr_end;
 unsigned int valid_blks_offset;
 unsigned int rootfs_end;
 
@@ -65,13 +65,18 @@ int write_upgrade_image(const char *filename, const void *ptr, int size) {
 }
 
 int kernel_front_case(void) {
+    const unsigned char empty_block[] = {0x19 ,0x85 ,0x20 ,0x03 ,0x00 ,0x00 ,0x00 ,0x0c ,0xf0 ,0x60 ,0xdc ,0x98 ,0xff ,0xff ,0xff ,0xff};
     collect_valid_blocks();
 
     memcpy(whole_file+rootfs_data_addr, valid_blks, valid_blks_offset);
-    printf("deadcode addr = %#x\n", rootfs_data_addr+valid_blks_offset);
-    memcpy(whole_file+rootfs_data_addr+valid_blks_offset, dead_code, 4);
+    /* 预留128k空余给sysupgrade.tgz */
+    memset(whole_file+rootfs_data_addr+valid_blks_offset, 0xff, 0x20000);
+    memcpy(whole_file+rootfs_data_addr+valid_blks_offset, empty_block, sizeof empty_block);
+    memcpy(whole_file+rootfs_data_addr+valid_blks_offset+0x10000, empty_block, sizeof empty_block);
+    printf("deadcode addr = %#x\n", rootfs_data_addr+valid_blks_offset+0x20000);
+    memcpy(whole_file+rootfs_data_addr+valid_blks_offset+0x20000, dead_code, 4);
 
-    write_upgrade_image(filename, whole_file,rootfs_data_addr+valid_blks_offset+4);
+    write_upgrade_image(filename, whole_file,rootfs_data_addr+valid_blks_offset+0x20000+4);
 
     return 0;
 }
@@ -118,6 +123,11 @@ int main(int argc, const char **argv) {
 
         cout << "address of rootfs_data(hex format): ";
         scanf("%x", &rootfs_data_addr);
+
+        if(kernel_front) {
+            cout << "end of rootfs_data(hex format): ";
+            scanf("%x", &rootfs_data_addr_end);
+        }
     } else {
         char cfg_line[64];
         FILE *cfg_fp = fopen(argv[2], "r");
@@ -152,7 +162,7 @@ int main(int argc, const char **argv) {
     fread(whole_file, 1, file_size, fp);
 
     if( kernel_front ) {
-        rootfs_end = file_size;
+        rootfs_end = rootfs_data_addr_end;
         return kernel_front_case();
     } else {
         rootfs_size = boundary_of_kernel_rootfs;
